@@ -1,0 +1,9 @@
+services:
+  hearth-core:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3520:3520"
+    volumes:
+      - ./data:/app/data
