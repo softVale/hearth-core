@@ -4,4 +4,4 @@ data/*
 !data/.gitkeep
 *.log
 test/.tmp/
-test/.smoke-data/
+test/.smoke-*/

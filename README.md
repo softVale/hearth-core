@@ -4,7 +4,7 @@
 
 这不是聊天界面，也不是某个人格的复制品。它提供的是一套通用、安全的“主动 AI”运行机制：触发器只负责敲门，决策器选择是否行动，治理层检查权限与冷却，执行器完成动作，事件流水记录发生过的一切。
 
-> 当前是可运行的 `v0.1`：适合体验、研究和二次开发，还不建议未经审查直接用于医疗、安全告警等高风险场景。
+> 当前是可运行的 `v0.2`：适合体验、研究和二次开发，还不建议未经审查直接用于医疗、安全告警等高风险场景。
 
 ## 它解决什么问题？
 
@@ -19,9 +19,12 @@
 Hearth Core 把一次唤醒记录为同一条事件链：
 
 ```text
-触发 trigger
-  → 只读观察 observation
-  → 动作选择 decision
+触发进入候选池 trigger
+  → 定时单轨扫描 sweep
+  → 活跃静默门 / 写入冷却 governor
+  → 全局仲裁：现在值不值得行动 arbitration
+  → 获批后只读观察 observation
+  → 再选择具体动作 decision
   → 权限/冷却/上限 governor
   → 执行 action
   → 统一事件流水 ledger
@@ -92,7 +95,7 @@ LLM_MODEL=gpt-4.1-mini
 
 ## 醒来时可以选择什么？
 
-v0.1 内置四个通用动作：
+v0.2 内置四个通用动作：
 
 | 动作 | 含义 | 是否对外产生影响 |
 | --- | --- | --- |
@@ -101,13 +104,31 @@ v0.1 内置四个通用动作：
 | `note` | 把念头留在事件流水 | 否 |
 | `webhook` | 调用外部 HTTP 地址 | 是，默认未配置 |
 
-动作必须同时满足两个条件：决策器选择它，并且 `ALLOWED_ACTIONS` 明确允许它。`webhook` 还必须配置 `WEBHOOK_URL`。
+动作必须同时满足两个条件：决策器选择它，并且 `ALLOWED_ACTIONS` 明确允许它。`webhook` 还必须配置 `WEBHOOK_URL`。写入动作默认至少间隔 20 分钟，单靠模型不能绕过。
 
 未来的邮件、手机通知、机器人消息、日历、智能设备等都应作为独立适配器接入，而不是把账号和密钥写进核心代码。
 
-## 如何手动触发？
+## 如何触发？
 
-网页中可以安全演示。也可以调用 API：
+正常入口只把触发放入候选池，等待默认每 15 分钟一次的全局仲裁：
+
+```bash
+curl -X POST http://localhost:3520/api/triggers \
+  -H "Authorization: Bearer 你的ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"source":"calendar","reason":"到了喝水时间","payload":{"suggested_action":"note","message":"记得喝水"}}'
+```
+
+管理员可手动运行一轮扫描：
+
+```bash
+curl -X POST http://localhost:3520/api/sweep \
+  -H "Authorization: Bearer 你的ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+网页和旧版兼容入口 `/api/wake` 会“登记触发并立即仲裁”，用于演示和调试；它仍不能绕过动作权限：
 
 ```bash
 curl -X POST http://localhost:3520/api/wake \
@@ -138,6 +159,8 @@ curl http://localhost:3520/api/events?limit=50 \
 
 ```text
 trigger.received
+sweep.started
+arbitration.approved / arbitration.passed / arbitration.failed
 observation.completed
 decision.made / decision.failed
 governor.allowed / governor.blocked
@@ -186,7 +209,7 @@ Hearth Core 提炼自一个真实运行的个人 AI 系统，但本仓库只保�
 
 ## 路线图
 
-- 定时、Webhook 和消息队列触发器；
+- Webhook 和消息队列触发器；
 - 可插拔只读观察器；
 - SQLite 事件存储与可视化筛选；
 - 通知/邮件等权限化动作适配器；

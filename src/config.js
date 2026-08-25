@@ -13,8 +13,10 @@ export const config = {
   llmApiKey: process.env.LLM_API_KEY || '',
   llmModel: process.env.LLM_MODEL || 'gpt-4.1-mini',
   allowedActions: new Set((process.env.ALLOWED_ACTIONS || 'silent,defer,note,webhook').split(',').map((x) => x.trim()).filter(Boolean)),
-  minActionGapMs: integer('MIN_ACTION_GAP_SECONDS', 300, 0) * 1000,
+  minActionGapMs: integer('MIN_ACTION_GAP_SECONDS', 1200, 0) * 1000,
   dailyActionLimit: integer('DAILY_ACTION_LIMIT', 12, 1),
   defaultDeferMs: integer('DEFAULT_DEFER_SECONDS', 900, 10) * 1000,
+  sweepIntervalMs: integer('SWEEP_INTERVAL_SECONDS', 900, 10) * 1000,
+  activeSilenceMs: integer('ACTIVE_SILENCE_SECONDS', 1200, 0) * 1000,
   webhookUrl: process.env.WEBHOOK_URL || '',
 };
